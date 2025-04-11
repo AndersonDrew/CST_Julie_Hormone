@@ -1,0 +1,737 @@
+---
+title: "Julie_Horm"
+author: "Andrew Anderson"
+date: "2024-12-31"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+````{r}
+library(nlme)
+library(Hmisc)
+library(lme4)
+library(lmerTest)
+library(sjPlot)
+library(ggplot2)
+library(gridExtra)
+
+dfc<-read.csv("/Users/andersond/Desktop/Hormone_MS/all_clean.csv")
+colnames(dfc)<-c("ID","Species","Fry","Date","Sex","Mass","SLh","SL","Depth","Partner","Size","Round","Category","Mass_Dif","SLh_Dif","SL_Dif","Depth_Dif","Shimmy","Approach","Out","Part","In","Shim_Dif","App_Dif","Out_Dif","Part_Dif","In_Dif","T","E2","Pr","X11KT")
+dfc$SexSize<-as.factor(paste0(dfc$Sex,"",dfc$Size))
+dfc$Sex_Size<-as.factor(paste0(dfc$Sex," ",dfc$Size))
+dfc$Round<-as.factor(dfc$Round)
+dfc$PartApp<-dfc$Approach-dfc$App_Dif
+dfc$PartShim<-dfc$Shimmy-dfc$Shim_Dif
+dfc$PartOut<-dfc$Out-dfc$Out_Dif
+dft<-dfc[which(dfc$Species=="transcriptus"),]
+dfm<-dfc[which(dfc$Species=="marleiri"),]
+````
+
+###All Transcriptus alone data
+How does Sex and Size influence the behavior... from looking at the exploratory code, I should include Round and exclude Category
+````{r}
+mod_out_basic<-lmer(asin(Out/1200)~Sex*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_app_basic<-glmer(Approach~Sex*Size+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+mod_shim_basic<-glmer(Shimmy~Sex*Size+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+summary(mod_out_basic)
+summary(mod_app_basic)
+summary(mod_shim_basic)
+````
+
+##Looking at interaction effects
+````{r}
+mod_out_basic_inta<-lmer(asin(Out/1200)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_app_basic_inta<-glmer(Approach~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+mod_shim_basic_inta<-glmer(Shimmy~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+dft$SexSize<-factor(dft$SexSize,levels=c("MaleBigger","MaleSmaller","FemaleBigger","FemaleSmaller"))
+mod_out_basic_intb<-lmer(asin(Out/1200)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_app_basic_intb<-glmer(Approach~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+mod_shim_basic_intb<-glmer(Shimmy~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+dft$SexSize<-factor(dft$SexSize,levels=c("FemaleSmaller","MaleSmaller","FemaleBigger","MaleBigger"))
+mod_out_basic_intc<-lmer(asin(Out/1200)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_app_basic_intc<-glmer(Approach~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+mod_shim_basic_intc<-glmer(Shimmy~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+dft$SexSize<-factor(dft$SexSize,levels=c("FemaleBigger","FemaleSmaller","MaleBigger","MaleSmaller"))
+summary(mod_out_basic_inta)
+summary(mod_out_basic_intb)
+summary(mod_out_basic_intc)
+summary(mod_app_basic_inta)
+summary(mod_app_basic_intb)
+summary(mod_app_basic_intc)
+summary(mod_shim_basic_inta)
+summary(mod_shim_basic_intb)
+summary(mod_shim_basic_intc)
+````
+
+##How hormones affect behavior on thier own -- note anytime KT is used we drop samples from JTRY03 as they were really high
+````{r}
+mod_out_11kt<-lmer(asin(Out/1200)~scale(X11KT)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+mod_out_T<-lmer(asin(Out/1200)~scale(T)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_out_E<-lmer(asin(Out/1200)~scale(E2)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_out_Pr<-lmer(asin(Out/1200)~scale(Pr)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+
+mod_app_11kt<-glmer(Approach~scale(X11KT)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft[1:30,])
+mod_app_T<-glmer(Approach~scale(T)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+mod_app_E<-glmer(Approach~scale(E2)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+mod_app_Pr<-glmer(Approach~scale(Pr)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+
+mod_shim_11kt<-glmer(Shimmy~scale(X11KT)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft[1:30,])
+mod_shim_T<-glmer(Shimmy~scale(T)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+mod_shim_E<-glmer(Shimmy~scale(E2)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+mod_shim_Pr<-glmer(Shimmy~scale(Pr)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dft)
+
+summary(mod_out_11kt)
+summary(mod_out_T)
+summary(mod_out_E)
+summary(mod_out_Pr)
+
+summary(mod_app_11kt)
+summary(mod_app_T)
+summary(mod_app_E)
+summary(mod_app_Pr)
+
+summary(mod_shim_11kt)
+summary(mod_shim_T)
+summary(mod_shim_E)
+summary(mod_shim_Pr)
+````
+
+##How sex and size influence hormones -- note Fry is included for Pr as that changed with fry present
+```{r}
+mod_pr<-lmer(scale(Pr)~Sex*Size+Fry+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+summary(mod_pr)
+
+mod_e2<-lmer(scale(E2)~Sex*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+summary(mod_e2)
+
+mod_kt<-lmer(scale(X11KT)~Sex*Size+Round+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+summary(mod_kt)
+
+mod_t<-lmer(scale(T)~Sex*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+summary(mod_t)
+```
+
+##Interaction analysis for sex and size on hormones
+```{r}
+mod_pr_basic_inta<-lmer(scale(Pr)~SexSize+Fry+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_e2_basic_inta<-lmer(scale(E2)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_kt_basic_inta<-lmer(scale(X11KT)~SexSize+Round+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+mod_t_basic_inta<-lmer(scale(T)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+dft$SexSize<-factor(dft$SexSize,levels=c("MaleBigger","MaleSmaller","FemaleBigger","FemaleSmaller"))
+mod_pr_basic_intb<-lmer(scale(Pr)~SexSize+Fry+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_e2_basic_intb<-lmer(scale(E2)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_kt_basic_intb<-lmer(scale(X11KT)~SexSize+Round+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+mod_t_basic_intb<-lmer(scale(T)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+dft$SexSize<-factor(dft$SexSize,levels=c("FemaleSmaller","MaleSmaller","FemaleBigger","MaleBigger"))
+mod_pr_basic_intc<-lmer(scale(Pr)~SexSize+Fry+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_e2_basic_intc<-lmer(scale(E2)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+mod_kt_basic_intc<-lmer(scale(X11KT)~SexSize+Round+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+mod_t_basic_intc<-lmer(scale(T)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft)
+dft$SexSize<-factor(dft$SexSize,levels=c("FemaleBigger","FemaleSmaller","MaleBigger","MaleSmaller"))
+summary(mod_pr_basic_inta)
+summary(mod_pr_basic_intb)
+summary(mod_pr_basic_intc)
+summary(mod_e2_basic_inta)
+summary(mod_e2_basic_intb)
+summary(mod_e2_basic_intc)
+summary(mod_kt_basic_inta)
+summary(mod_kt_basic_intb)
+summary(mod_kt_basic_intc)
+summary(mod_t_basic_inta)
+summary(mod_t_basic_intb)
+summary(mod_t_basic_intc)
+```
+
+## To search for optimal models we compressed partners beahvior
+````{r}
+pcbh<-prcomp(dft[,34:36],scale=TRUE)
+pcbh
+summary(pcbh)
+dft$Part_PC<-pcbh$x[,1]
+````
+## PC1 is decrease in interaction behaviors (Shimmy/Appoach) and increase in time out of nest
+
+## Model choice for Approach
+```{r}
+mod_appa<-glmer(Approach~1+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_appa,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appb<-glmer(Approach~Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_appb,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appc<-glmer(Approach~Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_appc,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appd<-glmer(Approach~scale(T)+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_appd,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appe<-glmer(Approach~scale(X11KT)+scale(T)+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_appe,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appg<-glmer(Approach~scale(X11KT)+scale(T)+scale(E2)+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_appg,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appz<-glmer(Approach~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+drop1(mod_appz,test="Chisq")
+
+summary(mod_appg)
+```
+
+## Model choice for Shimmy
+```{r}
+mod_shima<-glmer(Shimmy~1+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_shima,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimb<-glmer(Shimmy~scale(Pr)+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_shimb,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimc<-glmer(Shimmy~scale(Pr)+Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_shimc,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimd<-glmer(Shimmy~Size+scale(Pr)+Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_shimd,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shime<-glmer(Shimmy~Size+scale(X11KT)+scale(Pr)+Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_shime,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimf<-glmer(Shimmy~Size+scale(E2)+scale(X11KT)+scale(Pr)+Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_shimf,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimg<-glmer(Shimmy~Size+scale(E2)+scale(X11KT)+scale(Pr)+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_shimg,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimh<-glmer(Shimmy~Size+scale(T)+scale(E2)+scale(X11KT)+scale(Pr)+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_shimh,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimi<-glmer(Shimmy~Sex+Size+scale(T)+scale(E2)+scale(X11KT)+scale(Pr)+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+drop1(mod_shimi,test="Chisq")
+
+summary(mod_shimi)
+```
+
+
+## Model choice for Out of Nest
+```{r}
+mod_outa<-lmer(asin(Out/1200)~1+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_outa,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_outb<-lmer(asin(Out/1200)~scale(X11KT)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_outb,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_outc<-lmer(asin(Out/1200)~scale(X11KT)+scale(E2)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_outc,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_outd<-lmer(asin(Out/1200)~Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_outd,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_oute<-lmer(asin(Out/1200)~Size+scale(E2)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+add1(mod_oute,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_outz<-lmer(asin(Out/1200)~Sex+Size+scale(T)+scale(E2)+scale(X11KT)+scale(Pr)+Part_PC+Round+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dft[1:30,])
+drop1(mod_outz,test="Chisq")
+
+summary(mod_outc)
+```
+
+
+##Marilieri work
+````{r}
+mod_out_basic<-lmer(asin(Out/1200)~Sex*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_app_basic<-glmer(Approach~Sex*Size+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_shim_basic<-glmer(Shimmy~Sex*Size+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+summary(mod_out_basic)
+summary(mod_app_basic)
+summary(mod_shim_basic)
+````
+
+##Interaction
+````{r}
+mod_out_basic_inta<-lmer(asin(Out/1200)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_app_basic_inta<-glmer(Approach~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_shim_basic_inta<-glmer(Shimmy~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+dfm$SexSize<-factor(dfm$SexSize,levels=c("MaleBigger","MaleSmaller","FemaleBigger","FemaleSmaller"))
+mod_out_basic_intb<-lmer(asin(Out/1200)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_app_basic_intb<-glmer(Approach~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_shim_basic_intb<-glmer(Shimmy~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+dfm$SexSize<-factor(dfm$SexSize,levels=c("FemaleSmaller","MaleSmaller","FemaleBigger","MaleBigger"))
+mod_out_basic_intc<-lmer(asin(Out/1200)~SexSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_app_basic_intc<-glmer(Approach~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_shim_basic_intc<-glmer(Shimmy~SexSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+dfm$SexSize<-factor(dfm$SexSize,levels=c("FemaleBigger","FemaleSmaller","MaleBigger","MaleSmaller"))
+summary(mod_out_basic_inta)
+summary(mod_out_basic_intb)
+summary(mod_out_basic_intc)
+summary(mod_app_basic_inta)
+summary(mod_app_basic_intb)
+summary(mod_app_basic_intc)
+summary(mod_shim_basic_inta)
+summary(mod_shim_basic_intb)
+summary(mod_shim_basic_intc)
+````
+
+##Hormone influence of behavior
+````{r}
+mod_out_11kt<-lmer(asin(Out/1200)~scale(X11KT)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_out_T<-lmer(asin(Out/1200)~scale(T)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_out_E<-lmer(asin(Out/1200)~scale(E2)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_out_Pr<-lmer(asin(Out/1200)~scale(Pr)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+
+mod_app_11kt<-glmer(Approach~scale(X11KT)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_app_T<-glmer(Approach~scale(T)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_app_E<-glmer(Approach~scale(E2)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_app_Pr<-glmer(Approach~scale(Pr)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+
+mod_shim_11kt<-glmer(Shimmy~scale(X11KT)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_shim_T<-glmer(Shimmy~scale(T)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_shim_E<-glmer(Shimmy~scale(E2)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+mod_shim_Pr<-glmer(Shimmy~scale(Pr)+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfm)
+
+summary(mod_out_11kt)
+summary(mod_out_T)
+summary(mod_out_E)
+summary(mod_out_Pr)
+
+summary(mod_app_11kt)
+summary(mod_app_T)
+summary(mod_app_E)
+summary(mod_app_Pr)
+
+summary(mod_shim_11kt)
+summary(mod_shim_T)
+summary(mod_shim_E)
+summary(mod_shim_Pr)
+````
+
+##11KT
+````{r}
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Male Bigger","Male Smaller","Female Smaller","Female Bigger"))
+mod_kt_basic<-lmer(X11KT~Sex*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_kt_basic_inta<-lmer(X11KT~Sex_Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Female Bigger","Male Smaller","Male Bigger","Female Smaller"))
+mod_kt_basic_intb<-lmer(X11KT~Sex_Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Female Smaller","Male Smaller","Male Bigger","Female Bigger"))
+mod_kt_basic_intc<-lmer(X11KT~Sex_Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+summary(mod_kt_basic)
+summary(mod_kt_basic_inta)
+summary(mod_kt_basic_intb)
+summary(mod_kt_basic_intc)
+````
+
+##T
+````{r}
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Male Bigger","Male Smaller","Female Smaller","Female Bigger"))
+mod_t_basic<-lmer(T~Sex*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_t_basic_inta<-lmer(T~Sex_Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Female Bigger","Male Smaller","Male Bigger","Female Smaller"))
+mod_t_basic_intb<-lmer(T~Sex_Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Female Smaller","Male Smaller","Male Bigger","Female Bigger"))
+mod_t_basic_intc<-lmer(T~Sex_Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+summary(mod_t_basic)
+summary(mod_t_basic_inta)
+summary(mod_t_basic_intb)
+summary(mod_t_basic_intc)
+````
+
+
+##Pr
+````{r}
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Male Bigger","Male Smaller","Female Smaller","Female Bigger"))
+mod_pr_basic<-lmer(Pr~Sex*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+mod_pr_basic_inta<-lmer(Pr~Sex_Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Female Bigger","Male Smaller","Male Bigger","Female Smaller"))
+mod_pr_basic_intb<-lmer(Pr~Sex_Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Female Smaller","Male Smaller","Male Bigger","Female Bigger"))
+mod_pr_basic_intc<-lmer(Pr~Sex_Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+summary(mod_pr_basic)
+summary(mod_pr_basic_inta)
+summary(mod_pr_basic_intb)
+summary(mod_pr_basic_intc)
+````
+
+##E2
+````{r}
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Male Bigger","Male Smaller","Female Smaller","Female Bigger"))
+mod_e2m_basic<-lmer(E2~Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm[which(dfm$Sex=="Male"),])
+mod_e2f_basic<-lmer(E2~Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm[which(dfm$Sex=="Female"),])
+summary(mod_e2m_basic)
+summary(mod_e2f_basic)
+
+````
+
+````{r}
+pcbh<-prcomp(dfm[,34:36],scale=TRUE)
+pcbh
+summary(pcbh)
+dfm$Part_PC<-pcbh$x[,1]
+````
+
+## Model choice for Approach
+```{r}
+mod_appa<-glmer(Approach~1+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_appa,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appb<-glmer(Approach~Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_appb,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appc<-glmer(Approach~Part_PC+Size+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_appc,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appd<-glmer(Approach~scale(E2)+Part_PC+Size+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_appd,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appe<-glmer(Approach~scale(T)+Part_PC+Size+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_appe,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appf<-glmer(Approach~scale(X11KT)+scale(T)+Part_PC+Size+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_appf,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appg<-glmer(Approach~scale(T)+Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_appg,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_appz<-glmer(Approach~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+drop1(mod_appz,test="Chisq")
+
+summary(mod_appf)
+```
+
+## Model choice for Shimmy
+```{r}
+mod_shima<-glmer(Shimmy~1+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_shima,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimb<-glmer(Shimmy~Size+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_shimb,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimc<-glmer(Shimmy~Size+Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_shimc,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimd<-glmer(Shimmy~Size+scale(T)+Part_PC+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_shimd,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shime<-glmer(Shimmy~Size+scale(T)+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_shime,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimf<-glmer(Shimmy~Size+scale(X11KT)+scale(E2)+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_shimf,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimg<-glmer(Shimmy~Size+scale(X11KT)+scale(E2)+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_shimg,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_shimz<-glmer(Shimmy~Sex+Size+scale(X11KT)+scale(E2)+scale(T)+scale(Pr)+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+drop1(mod_shimi,test="Chisq")
+
+summary(mod_shime)
+```
+
+
+## Model choice for Out of Nest
+```{r}
+mod_outa<-lmer(asin(Out/1200)~1+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_outa,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_outb<-lmer(asin(Out/1200)~Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_outb,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+mod_outz<-lmer(asin(Out/1200)~Sex+Size+scale(T)+scale(E2)+scale(X11KT)+scale(Pr)+Part_PC+Round+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+drop1(mod_outz,test="Chisq")
+
+mod_outc<-lmer(asin(Out/1200)~Size+scale(T)+scale(X11KT)+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+add1(mod_outc,~Sex+Size+Round+scale(X11KT)+scale(E2)+scale(Pr)+scale(T)+Part_PC,test="Chisq")
+
+summary(mod_outb)
+```
+
+
+##Species Comparison
+```{r}
+mod_out_spx<-lmer(asin(Out/1200)~Species*Sex+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_app_spx<-glmer(Approach~Species*Sex+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_shim_spx<-glmer(Shimmy~Species*Sex+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_kt_spx<-lmer(scale(X11KT)~Species*Sex+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc[1:54,])
+mod_t_spx<-lmer(scale(T)~Species*Sex+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_e2_spx<-lmer(scale(E2)~Species*Sex+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_pr_spx<-lmer(scale(Pr)~Species*Sex+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+
+summary(mod_out_spx)
+summary(mod_app_spx)
+summary(mod_shim_spx)
+summary(mod_kt_spx)
+summary(mod_t_spx)
+summary(mod_e2_spx)
+summary(mod_pr_spx)
+```
+
+```{r}
+mod_out_spz<-lmer(asin(Out/1200)~Species*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_app_spz<-glmer(Approach~Species*Size+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_shim_spz<-glmer(Shimmy~Species*Size+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_kt_spz<-lmer(scale(X11KT)~Species*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc[1:54,])
+mod_t_spz<-lmer(scale(T)~Species*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_e2_spz<-lmer(scale(E2)~Species*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_pr_spz<-lmer(scale(Pr)~Species*Size+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+
+summary(mod_out_spz)
+summary(mod_app_spz)
+summary(mod_shim_spz)
+summary(mod_kt_spz)
+summary(mod_t_spz)
+summary(mod_e2_spz)
+summary(mod_pr_spz)
+```
+```{r}
+dfc$SpSize<-as.factor(paste0(dfc$Species,"",dfc$Size))
+mod_out_sp_inta<-lmer(asin(Out/1200)~SpSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_app_sp_inta<-glmer(Approach~SpSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfc)
+mod_shim_sp_inta<-glmer(Shimmy~SpSize+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfc)
+dfc$SpSize<-factor(dfc$SpSize,levels=c("transcriptusBigger","transcriptusSmaller","marleiriBigger","marleiriSmaller"))
+mod_out_sp_intb<-lmer(asin(Out/1200)~SpSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_app_sp_intb<-glmer(Approach~SpSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfc)
+mod_shim_sp_intb<-glmer(Shimmy~SpSize+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfc)
+dfc$SpSize<-factor(dfc$SpSize,levels=c("marleiriSmaller","transcriptusSmaller","marleiriBigger","transcriptusBigger"))
+mod_out_sp_intc<-lmer(asin(Out/1200)~SpSize+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfc)
+mod_app_sp_intc<-glmer(Approach~SpSize+Round+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfc)
+mod_shim_sp_intc<-glmer(Shimmy~SpSize+(1|ID),control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),family="poisson",dfc)
+dfc$SpSize<-factor(dfc$SpSize,levels=c("marleiriBigger","marleiriSmaller","transcriptusBigger","transcriptusSmaller"))
+summary(mod_out_sp_inta)
+summary(mod_out_sp_intb)
+summary(mod_out_sp_intc)
+summary(mod_app_sp_inta)
+summary(mod_app_sp_intb)
+summary(mod_app_sp_intc)
+summary(mod_shim_sp_inta)
+summary(mod_shim_sp_intb)
+summary(mod_shim_sp_intc)
+```
+
+
+
+```{r}
+dft$Sex_Size<-factor(dft$Sex_Size,levels=c("Male Bigger","Male Smaller","Female Smaller","Female Bigger"))
+par(mfrow=c(2,3))
+par(mar=c(2.5,5,.75,0))
+boxplot(Out~Sex_Size,dft,col=c("#86BBB8","#86BBB8","#F6AE2D","#F6AE2D"),xaxt="n",cex.axis=1.25,cex.lab=1.75, xlab="",ylab="Time Out of Nest (s)",ylim=c(0,1250))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1,1),dft$Out[which(dft$Sex_Size=="Male Bigger")],col="#33658A",pch=17,cex=2)
+points(c(3,3,3,3,3,3,3,3),dft$Out[which(dft$Sex_Size=="Female Smaller")],col="#F26419",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2,2),dft$Out[which(dft$Sex_Size=="Male Smaller")],col="#33658A",pch=17,cex=2)
+segments(c(1,1,1,1),dft$Out[which(dft$Sex_Size=="Male Bigger" & dft$Category=="B_S")],c(2,2,2,2),dft$Out[which(dft$Sex_Size=="Male Smaller" & dft$Category=="B_S")],lwd=2,lty=1,col="#33658A")
+segments(c(1,1,1,1),dft$Out[which(dft$Sex_Size=="Male Bigger" & dft$Category=="S_B")],c(2,2,2,2),dft$Out[which(dft$Sex_Size=="Male Smaller" & dft$Category=="S_B")],lwd=2,lty=2,col="#33658A")
+points(c(4,4,4,4,4,4,4,4),dft$Out[which(dft$Sex_Size=="Female Bigger")],col="#F26419",pch=16,cex=2)
+segments(c(3,3,3,3),dft$Out[which(dft$Sex_Size=="Female Smaller" & dft$Category=="S_B")],c(4,4,4,4),dft$Out[which(dft$Sex_Size=="Female Bigger" & dft$Category=="S_B")],lwd=2,lty=1,col="#F26419")
+segments(c(3,3,3,3),dft$Out[which(dft$Sex_Size=="Female Smaller" & dft$Category=="B_S")],c(4,4,4,4),dft$Out[which(dft$Sex_Size=="Female Bigger" & dft$Category=="B_S")],lwd=2,lty=2,col="#F26419")
+
+boxplot(log(Approach+1)~Sex_Size,dft,col=c("#86BBB8","#86BBB8","#F6AE2D","#F6AE2D"),xaxt="n",cex.axis=1.25,cex.lab=1.75, xlab="",ylab="log (# of Approaches + 1)",ylim=c(0,4.5))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1,1),log(dft$Approach[which(dft$Sex_Size=="Male Bigger")]+1),col="#33658A",pch=17,cex=2)
+points(c(3,3,3,3,3,3,3,3),log(dft$Approach[which(dft$Sex_Size=="Female Smaller")]+1),col="#F26419",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2,2),log(dft$Approach[which(dft$Sex_Size=="Male Smaller")]+1),col="#33658A",pch=17,cex=2)
+segments(c(1,1,1,1),log(dft$Approach[which(dft$Sex_Size=="Male Bigger" & dft$Category=="B_S")]+1),c(2,2,2,2),log(dft$Approach[which(dft$Sex_Size=="Male Smaller" & dft$Category=="B_S")]+1),lwd=2,lty=1,col="#33658A")
+segments(c(1,1,1,1),log(dft$Approach[which(dft$Sex_Size=="Male Bigger" & dft$Category=="S_B")]+1),c(2,2,2,2),log(dft$Approach[which(dft$Sex_Size=="Male Smaller" & dft$Category=="S_B")]+1),lwd=2,lty=2,col="#33658A")
+points(c(4,4,4,4,4,4,4,4),log(dft$Approach[which(dft$Sex_Size=="Female Bigger")]+1),col="#F26419",pch=16,cex=2)
+segments(c(3,3,3,3),log(dft$Approach[which(dft$Sex_Size=="Female Smaller" & dft$Category=="S_B")]+1),c(4,4,4,4),log(dft$Approach[which(dft$Sex_Size=="Female Bigger" & dft$Category=="S_B")]+1),lwd=2,lty=1,col="#F26419")
+segments(c(3,3,3,3),log(dft$Approach[which(dft$Sex_Size=="Female Smaller" & dft$Category=="B_S")]+1),c(4,4,4,4),log(dft$Approach[which(dft$Sex_Size=="Female Bigger" & dft$Category=="B_S")]+1),lwd=2,lty=2,col="#F26419")
+
+boxplot(log(Shimmy+1)~Sex_Size,dft,col=c("#86BBB8","#86BBB8","#F6AE2D","#F6AE2D"),xaxt="n",cex.axis=1.25,cex.lab=1.75,xlab="",ylab="log (# of Shimmy + 1)",ylim=c(0,4.25))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1,1),log(dft$Shimmy[which(dft$Sex_Size=="Male Bigger")]+1),col="#33658A",pch=17,cex=2)
+points(c(3,3,3,3,3,3,3,3),log(dft$Shimmy[which(dft$Sex_Size=="Female Smaller")]+1),col="#F26419",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2,2),log(dft$Shimmy[which(dft$Sex_Size=="Male Smaller")]+1),col="#33658A",pch=17,cex=2)
+segments(c(1,1,1,1),log(dft$Shimmy[which(dft$Sex_Size=="Male Bigger" & dft$Category=="B_S")]+1),c(2,2,2,2),log(dft$Shimmy[which(dft$Sex_Size=="Male Smaller" & dft$Category=="B_S")]+1),lwd=2,lty=1,col="#33658A")
+segments(c(1,1,1,1),log(dft$Shimmy[which(dft$Sex_Size=="Male Bigger" & dft$Category=="S_B")]+1),c(2,2,2,2),log(dft$Shimmy[which(dft$Sex_Size=="Male Smaller" & dft$Category=="S_B")]+1),lwd=2,lty=2,col="#33658A")
+points(c(4,4,4,4,4,4,4,4),log(dft$Shimmy[which(dft$Sex_Size=="Female Bigger")]+1),col="#F26419",pch=16,cex=2)
+segments(c(3,3,3,3),log(dft$Shimmy[which(dft$Sex_Size=="Female Smaller" & dft$Category=="S_B")]+1),c(4,4,4,4),log(dft$Shimmy[which(dft$Sex_Size=="Female Bigger" & dft$Category=="S_B")]+1),lwd=2,lty=1,col="#F26419")
+segments(c(3,3,3,3),log(dft$Shimmy[which(dft$Sex_Size=="Female Smaller" & dft$Category=="B_S")]+1),c(4,4,4,4),log(dft$Shimmy[which(dft$Sex_Size=="Female Bigger" & dft$Category=="B_S")]+1),lwd=2,lty=2,col="#F26419")
+
+dfm$Sex_Size<-factor(dfm$Sex_Size,levels=c("Male Bigger","Male Smaller","Female Smaller","Female Bigger"))
+par(mar=c(2.75,5,0.25,0))
+boxplot(Out~Sex_Size,dfm,col=c("#b1b6fa","#b1b6fa","#fbb9c2","#Fbb9c2"),xaxt="n",cex.axis=1.25,cex.lab=1.75,xlab="",ylab="Time Out of Nest (s)",ylim=c(0,1250))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1),dfm$Out[which(dfm$Sex_Size=="Male Bigger")],col="#6672F6",pch=17,cex=2)
+points(c(3,3,3,3,3),dfm$Out[which(dfm$Sex_Size=="Female Smaller")],col="#F7566E",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2),dfm$Out[which(dfm$Sex_Size=="Male Smaller")],col="#6672F6",pch=17,cex=2)
+segments(c(1,1,1),dfm$Out[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="B_S")],c(2,2,2),dfm$Out[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="B_S")],lwd=2,lty=1,col="#6672F6")
+segments(c(1,1,1,1),dfm$Out[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="S_B")],c(2,2,2,2),dfm$Out[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="S_B")],lwd=2,lty=2,col="#6672F6")
+points(c(4,4,4,4,4),dfm$Out[which(dfm$Sex_Size=="Female Bigger")],col="#F7566E",pch=16,cex=2)
+segments(c(3,3,3),dfm$Out[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="S_B")],c(4,4,4),dfm$Out[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="S_B")],lwd=2,lty=1,col="#F7566E")
+segments(c(3,3),dfm$Out[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="B_S")],c(4,4),dfm$Out[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="B_S")],lwd=2,lty=2,col="#F7566E")
+
+boxplot(log(Approach+1)~Sex_Size,dfm,col=c("#b1b6fa","#b1b6fa","#fbb9c2","#Fbb9c2"),xaxt="n",cex.axis=1.25,cex.lab=1.75,xlab="",ylab="log (# of Approaches + 1)",ylim=c(0,4.5))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1),log(dfm$Approach[which(dfm$Sex_Size=="Male Bigger")]+1),col="#6672F6",pch=17,cex=2)
+points(c(3,3,3,3,3),log(dfm$Approach[which(dfm$Sex_Size=="Female Smaller")]+1),col="#F7566E",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2),log(dfm$Approach[which(dfm$Sex_Size=="Male Smaller")]+1),col="#6672F6",pch=17,cex=2)
+segments(c(1,1,1),log(dfm$Approach[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="B_S")]+1),c(2,2,2),log(dfm$Approach[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="B_S")]+1),lwd=2,lty=1,col="#6672F6")
+segments(c(1,1,1,1),log(dfm$Approach[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="S_B")]+1),c(2,2,2,2),log(dfm$Approach[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="S_B")]+1),lwd=2,lty=2,col="#6672F6")
+points(c(4,4,4,4,4),log(dfm$Approach[which(dfm$Sex_Size=="Female Bigger")]+1),col="#F7566E",pch=16,cex=2)
+segments(c(3,3,3),log(dfm$Approach[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="S_B")]+1),c(4,4,4),log(dfc$Approach[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="S_B")]+1),lwd=2,lty=1,col="#F7566E")
+segments(c(3,3),log(dfm$Approach[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="B_S")]+1),c(4,4),log(dfm$Approach[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="B_S")]+1),lwd=2,lty=2,col="#F7566E")
+
+boxplot(log(Shimmy+1)~Sex_Size,dfm,col=c("#b1b6fa","#b1b6fa","#fbb9c2","#Fbb9c2"),xaxt="n",cex.axis=1.25,cex.lab=1.75,xlab="",ylab="log (# of Shimmy + 1)",ylim=c(0,4.25))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1),log(dfm$Shimmy[which(dfm$Sex_Size=="Male Bigger")]+1),col="#6672F6",pch=17,cex=2)
+points(c(3,3,3,3,3),log(dfm$Shimmy[which(dfm$Sex_Size=="Female Smaller")]+1),col="#F7566E",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2),log(dfm$Shimmy[which(dfm$Sex_Size=="Male Smaller")]+1),col="#6672F6",pch=17,cex=2)
+segments(c(1,1,1),log(dfm$Shimmy[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="B_S")]+1),c(2,2,2),log(dfm$Shimmy[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="B_S")]+1),lwd=2,lty=1,col="#6672F6")
+segments(c(1,1,1,1),log(dfm$Shimmy[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="S_B")]+1),c(2,2,2,2),log(dfm$Shimmy[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="S_B")]+1),lwd=2,lty=2,col="#6672F6")
+points(c(4,4,4,4,4),log(dfm$Shimmy[which(dfm$Sex_Size=="Female Bigger")]+1),col="#F7566E",pch=16,cex=2)
+segments(c(3,3,3),log(dfm$Shimmy[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="S_B")]+1),c(4,4,4),log(dfm$Shimmy[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="S_B")]+1),lwd=2,lty=1,col="#F7566E")
+segments(c(3,3),log(dfm$Shimmy[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="B_S")]+1),c(4,4),log(dfm$Shimmy[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="B_S")]+1),lwd=2,lty=2,col="#F7566E")
+```
+
+```{r}
+par(mfrow=c(2,2))
+par(mar=c(2.5,5,.75,0))
+boxplot(X11KT~Sex_Size,dft[1:30,],col=c("#86BBB8","#86BBB8","#F6AE2D","#F6AE2D"),xaxt="n",cex.axis=1.25,cex.lab=1.5,ylab="11-Ketotestosterone (pg/g/hr)",xlab="",ylim=c(0,80))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1),dft$X11KT[which(dft$Sex_Size[1:30]=="Male Bigger")],col="#33658A",pch=17,cex=2)
+points(c(3,3,3,3,3,3,3,3),dft$X11KT[which(dft$Sex_Size[1:30]=="Female Smaller")],col="#F26419",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2),dft$X11KT[which(dft$Sex_Size[1:30]=="Male Smaller")],col="#33658A",pch=17,cex=2)
+segments(c(1,1,1,1),dft$X11KT[which(dft$Sex_Size[1:30]=="Male Bigger" & dft$Category[1:30]=="B_S")],c(2,2,2,2),dft$X11KT[which(dft$Sex_Size[1:30]=="Male Smaller" & dft$Category[1:30]=="B_S")],lwd=2,lty=1,col="#33658A")
+segments(c(1,1,1,1),dft$X11KT[which(dft$Sex_Size[1:30]=="Male Bigger" & dft$Category[1:30]=="S_B")],c(2,2,2,2),dft$X11KT[which(dft$Sex_Size[1:30]=="Male Smaller" & dft$Category[1:30]=="S_B")],lwd=2,lty=2,col="#33658A")
+points(c(4,4,4,4,4,4,4,4),dft$X11KT[which(dft$Sex_Size[1:30]=="Female Bigger")],col="#F26419",pch=16,cex=2)
+segments(c(3,3,3,3),dft$X11KT[which(dft$Sex_Size[1:30]=="Female Smaller" & dft$Category[1:30]=="S_B")],c(4,4,4,4),dft$X11KT[which(dft$Sex_Size[1:30]=="Female Bigger" & dft$Category[1:30]=="S_B")],lwd=2,lty=1,col="#F26419")
+segments(c(3,3,3,3),dft$X11KT[which(dft$Sex_Size[1:30]=="Female Smaller" & dft$Category[1:30]=="B_S")],c(4,4,4,4),dft$X11KT[which(dft$Sex_Size[1:30]=="Female Bigger" & dft$Category[1:30]=="B_S")],lwd=2,lty=2,col="#F26419")
+
+
+boxplot(T~Sex_Size,dft,col=c("#86BBB8","#86BBB8","#F6AE2D","#F6AE2D"),xaxt="n",cex.axis=1.25,cex.lab=1.5,ylab="Testosterone (pg/g/hr)",xlab="",ylim=c(0,450))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1,1),dft$T[which(dft$Sex_Size=="Male Bigger")],col="#33658A",pch=17,cex=2)
+points(c(3,3,3,3,3,3,3,3),dft$T[which(dft$Sex_Size=="Female Smaller")],col="#F26419",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2,2),dft$T[which(dft$Sex_Size=="Male Smaller")],col="#33658A",pch=17,cex=2)
+segments(c(1,1,1,1),dft$T[which(dft$Sex_Size=="Male Bigger" & dft$Category=="B_S")],c(2,2,2,2),dft$T[which(dft$Sex_Size=="Male Smaller" & dft$Category=="B_S")],lwd=2,lty=1,col="#33658A")
+segments(c(1,1,1,1),dft$T[which(dft$Sex_Size=="Male Bigger" & dft$Category=="S_B")],c(2,2,2,2),dft$T[which(dft$Sex_Size=="Male Smaller" & dft$Category=="S_B")],lwd=2,lty=2,col="#33658A")
+points(c(4,4,4,4,4,4,4,4),dft$T[which(dft$Sex_Size=="Female Bigger")],col="#F26419",pch=16,cex=2)
+segments(c(3,3,3,3),dft$T[which(dft$Sex_Size=="Female Smaller" & dft$Category=="S_B")],c(4,4,4,4),dft$T[which(dft$Sex_Size=="Female Bigger" & dft$Category=="S_B")],lwd=2,lty=1,col="#F26419")
+segments(c(3,3,3,3),dft$T[which(dft$Sex_Size=="Female Smaller" & dft$Category=="B_S")],c(4,4,4,4),dft$T[which(dft$Sex_Size=="Female Bigger" & dft$Category=="B_S")],lwd=2,lty=2,col="#F26419")
+
+par(mar=c(2.75,5,0.25,0))
+boxplot(X11KT~Sex_Size,dfm,col=c("#b1b6fa","#b1b6fa","#fbb9c2","#Fbb9c2"),xaxt="n",cex.axis=1.25,cex.lab=1.5,ylab="11-Ketotestosterone (pg/g/hr)",xlab="",ylim=c(0,80))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1),dfm$X11KT[which(dfm$Sex_Size=="Male Bigger")],col="#6672F6",pch=17,cex=2)
+points(c(3,3,3,3,3),dfm$X11KT[which(dfm$Sex_Size=="Female Smaller")],col="#F7566E",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2),dfm$X11KT[which(dfm$Sex_Size=="Male Smaller")],col="#6672F6",pch=17,cex=2)
+segments(c(1,1,1),dfm$X11KT[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="B_S")],c(2,2,2),dfm$X11KT[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="B_S")],lwd=2,lty=1,col="#6672F6")
+segments(c(1,1,1,1),dfm$X11KT[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="S_B")],c(2,2,2,2),dfm$X11KT[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="S_B")],lwd=2,lty=2,col="#6672F6")
+points(c(4,4,4,4,4),dfm$X11KT[which(dfm$Sex_Size=="Female Bigger")],col="#F7566E",pch=16,cex=2)
+segments(c(3,3,3),dfm$X11KT[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="S_B")],c(4,4,4),dfm$X11KT[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="S_B")],lwd=2,lty=1,col="#F7566E")
+segments(c(3,3),dfm$X11KT[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="B_S")],c(4,4),dfm$X11KT[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="B_S")],lwd=2,lty=2,col="#F7566E")
+
+boxplot(T~Sex_Size,dfm,col=c("#b1b6fa","#b1b6fa","#fbb9c2","#Fbb9c2"),xaxt="n",cex.axis=1.25,cex.lab=1.5,ylab="Testosterone (pg/g/hr)",xlab="",ylim=c(0,450))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1),dfm$T[which(dfm$Sex_Size=="Male Bigger")],col="#6672F6",pch=17,cex=2)
+points(c(3,3,3,3,3),dfm$T[which(dfm$Sex_Size=="Female Smaller")],col="#F7566E",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2),dfm$T[which(dfm$Sex_Size=="Male Smaller")],col="#6672F6",pch=17,cex=2)
+segments(c(1,1,1),dfm$T[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="B_S")],c(2,2,2),dfm$T[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="B_S")],lwd=2,lty=1,col="#6672F6")
+segments(c(1,1,1,1),dfm$T[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="S_B")],c(2,2,2,2),dfm$T[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="S_B")],lwd=2,lty=2,col="#6672F6")
+points(c(4,4,4,4,4),dfm$T[which(dfm$Sex_Size=="Female Bigger")],col="#F7566E",pch=16,cex=2)
+segments(c(3,3,3),dfm$T[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="S_B")],c(4,4,4),dfm$T[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="S_B")],lwd=2,lty=1,col="#F7566E")
+segments(c(3,3),dfm$T[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="B_S")],c(4,4),dfm$T[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="B_S")],lwd=2,lty=2,col="#F7566E")
+```
+
+
+```{r}
+par(mfrow=c(2,2))
+par(mar=c(2.5,5,.75,0))
+boxplot(log(E2)~Sex_Size,dft,col=c("#86BBB8","#86BBB8","#F6AE2D","#F6AE2D"),xaxt="n",cex.axis=1.25,cex.lab=1.75,ylab="log (Estradiol (pg/g/hr))",xlab="",ylim=c(2.5,8))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1,1),log(dft$E2[which(dft$Sex_Size=="Male Bigger")]+1),col="#33658A",pch=17,cex=2)
+points(c(3,3,3,3,3,3,3,3),log(dft$E2[which(dft$Sex_Size=="Female Smaller")]),col="#F26419",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2,2),log(dft$E2[which(dft$Sex_Size=="Male Smaller")]),col="#33658A",pch=17,cex=2)
+segments(c(1,1,1,1),log(dft$E2[which(dft$Sex_Size=="Male Bigger" & dft$Category=="B_S")]),c(2,2,2,2),log(dft$E2[which(dft$Sex_Size=="Male Smaller" & dft$Category=="B_S")]),lwd=2,lty=1,col="#33658A")
+segments(c(1,1,1,1),log(dft$E2[which(dft$Sex_Size=="Male Bigger" & dft$Category=="S_B")]),c(2,2,2,2),log(dft$E2[which(dft$Sex_Size=="Male Smaller" & dft$Category=="S_B")]),lwd=2,lty=2,col="#33658A")
+points(c(4,4,4,4,4,4,4,4),log(dft$E2[which(dft$Sex_Size=="Female Bigger")]),col="#F26419",pch=16,cex=2)
+segments(c(3,3,3,3),log(dft$E2[which(dft$Sex_Size=="Female Smaller" & dft$Category=="S_B")]),c(4,4,4,4),log(dft$E2[which(dft$Sex_Size=="Female Bigger" & dft$Category=="S_B")]),lwd=2,lty=1,col="#F26419")
+segments(c(3,3,3,3),log(dft$E2[which(dft$Sex_Size=="Female Smaller" & dft$Category=="B_S")]),c(4,4,4,4),log(dft$E2[which(dft$Sex_Size=="Female Bigger" & dft$Category=="B_S")]),lwd=2,lty=2,col="#F26419")
+
+boxplot(Pr~Sex_Size,dft,col=c("#86BBB8","#86BBB8","#F6AE2D","#F6AE2D"),xaxt="n",cex.axis=1.25,cex.lab=1.75,ylab="Progesterone (pg/g/hr)",xlab="",ylim=c(0,1200))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1,1),dft$Pr[which(dft$Sex_Size=="Male Bigger")],col="#33658A",pch=17,cex=2)
+points(c(3,3,3,3,3,3,3,3),dft$Pr[which(dft$Sex_Size=="Female Smaller")],col="#F26419",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2,2),dft$Pr[which(dft$Sex_Size=="Male Smaller")],col="#33658A",pch=17,cex=2)
+segments(c(1,1,1,1),dft$Pr[which(dft$Sex_Size=="Male Bigger" & dft$Category=="B_S")],c(2,2,2,2),dft$Pr[which(dft$Sex_Size=="Male Smaller" & dft$Category=="B_S")],lwd=2,lty=1,col="#33658A")
+segments(c(1,1,1,1),dft$Pr[which(dft$Sex_Size=="Male Bigger" & dft$Category=="S_B")],c(2,2,2,2),dft$Pr[which(dft$Sex_Size=="Male Smaller" & dft$Category=="S_B")],lwd=2,lty=2,col="#33658A")
+points(c(4,4,4,4,4,4,4,4),dft$Pr[which(dft$Sex_Size=="Female Bigger")],col="#F26419",pch=16,cex=2)
+segments(c(3,3,3,3),dft$Pr[which(dft$Sex_Size=="Female Smaller" & dft$Category=="S_B")],c(4,4,4,4),dft$Pr[which(dft$Sex_Size=="Female Bigger" & dft$Category=="S_B")],lwd=2,lty=1,col="#F26419")
+segments(c(3,3,3,3),dft$Pr[which(dft$Sex_Size=="Female Smaller" & dft$Category=="B_S")],c(4,4,4,4),dft$Pr[which(dft$Sex_Size=="Female Bigger" & dft$Category=="B_S")],lwd=2,lty=2,col="#F26419")
+
+par(mar=c(2.75,5,0.25,0))
+boxplot(log(E2+1)~Sex_Size,dfm,col=c("#b1b6fa","#b1b6fa","#fbb9c2","#Fbb9c2"),xaxt="n",cex.axis=1.25,cex.lab=1.75,ylab="log (Estradiol (pg/g/hr))",xlab="",ylim=c(2.5,8))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1),log(dfm$E2[which(dfm$Sex_Size=="Male Bigger")]),col="#6672F6",pch=17,cex=2)
+points(c(3,3,3,3,3),log(dfm$E2[which(dfm$Sex_Size=="Female Smaller")]),col="#F7566E",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2),log(dfm$E2[which(dfm$Sex_Size=="Male Smaller")]),col="#6672F6",pch=17,cex=2)
+segments(c(1,1,1),log(dfm$E2[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="B_S")]),c(2,2,2),log(dfm$E2[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="B_S")]),lwd=2,lty=1,col="#6672F6")
+segments(c(1,1,1,1),log(dfm$E2[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="S_B")]),c(2,2,2,2),log(dfm$E2[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="S_B")]),lwd=2,lty=2,col="#6672F6")
+points(c(4,4,4,4,4),log(dfm$E2[which(dfm$Sex_Size=="Female Bigger")]),col="#F7566E",pch=16,cex=2)
+segments(c(3,3,3),log(dfm$E2[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="S_B")]),c(4,4,4),log(dfm$E2[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="S_B")]),lwd=2,lty=1,col="#F7566E")
+segments(c(3,3),log(dfm$E2[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="B_S")]),c(4,4),log(dfm$E2[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="B_S")]),lwd=2,lty=2,col="#F7566E")
+
+boxplot(Pr~Sex_Size,dfm,col=c("#b1b6fa","#b1b6fa","#fbb9c2","#Fbb9c2"),xaxt="n",cex.axis=1.25,cex.lab=1.75,ylab="Progesterone (pg/g/hr)",xlab="", ylim=c(0,1200))
+axis(1,at=c(1:4),labels = c("Male\nBigger","Male\nSmaller","Female\nSmaller","Female\nBigger"),tick=FALSE)
+points(c(1,1,1,1,1,1,1),dfm$Pr[which(dfm$Sex_Size=="Male Bigger")],col="#6672F6",pch=17,cex=2)
+points(c(3,3,3,3,3),dfm$Pr[which(dfm$Sex_Size=="Female Smaller")],col="#F7566E",pch=16,cex=2)
+points(c(2,2,2,2,2,2,2),dfm$Pr[which(dfm$Sex_Size=="Male Smaller")],col="#6672F6",pch=17,cex=2)
+segments(c(1,1,1),dfm$Pr[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="B_S")],c(2,2,2),dfm$Pr[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="B_S")],lwd=2,lty=1,col="#6672F6")
+segments(c(1,1,1,1),dfm$Pr[which(dfm$Sex_Size=="Male Bigger" & dfm$Category=="S_B")],c(2,2,2,2),dfm$Pr[which(dfm$Sex_Size=="Male Smaller" & dfm$Category=="S_B")],lwd=2,lty=2,col="#6672F6")
+points(c(4,4,4,4,4),dfm$Pr[which(dfm$Sex_Size=="Female Bigger")],col="#F7566E",pch=16,cex=2)
+segments(c(3,3,3),dfm$Pr[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="S_B")],c(4,4,4),dfm$Pr[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="S_B")],lwd=2,lty=1,col="#F7566E")
+segments(c(3,3),dfm$Pr[which(dfm$Sex_Size=="Female Smaller" & dfm$Category=="B_S")],c(4,4),dfm$Pr[which(dfm$Sex_Size=="Female Bigger" & dfm$Category=="B_S")],lwd=2,lty=2,col="#F7566E")
+```
+
+```{r}
+dftdrop<-dft[1:30,]
+dftdrop$sc11KT<-scale(dftdrop$X11KT)
+dftdrop$scE2<-scale(dftdrop$E2)
+dftdrop$scT<-scale(dftdrop$T)
+dftdrop$scPr<-scale(dftdrop$Pr)
+dftdrop$pcp<-dftdrop$Part_PC*-1
+dftdrop$tOut<-asin(dftdrop$Out/1200)
+jtcol<-c("#33658A","#33658A","#33658A","#33658A","#33658A","#33658A","#33658A","#33658A","#33658A","#33658A","#33658A","#33658A","#33658A","#33658A","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419","#F26419")
+jtsize<-c(5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3,5,3)
+
+
+pm_out_jt<-lmer(tOut~sc11KT+scE2+(1|ID),control=lmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dftdrop)
+pm_app_jt<-glmer(Approach~sc11KT+scT+scE2+pcp+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dftdrop)
+pm_shim_jt<-glmer(Shimmy+1~Sex+Size+scT+scE2+sc11KT+scPr+pcp+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dftdrop)
+
+
+p1<-ggplotGrob(plot_model(pm_out_jt,type="pred",terms = c("sc11KT"),bias_correction=TRUE,col="gray42")+coord_cartesian(xlim=c(-2,3.5),ylim=c(-.1,1.5),expand=FALSE)+geom_point(data=dftdrop,aes(x=sc11KT,y=tOut),size=jtsize,col=jtcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Scaled 11KT (pg/g/hr)",y="Arcsine (% Time Out of Nest)",title=""))
+
+p2<-ggplotGrob(plot_model(pm_app_jt,type="pred",terms = c("sc11KT"),bias_correction=TRUE,col="gray42")+scale_y_continuous(trans='log10')+coord_cartesian(xlim=c(-2,3.5),ylim=c(2.5,80),expand=FALSE)+geom_point(data=dftdrop,aes(x=sc11KT,y=Approach),size=jtsize,col=jtcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Scaled 11KT (pg/g/hr)",y="Number of Approaches",title=""))
+
+p3<-ggplotGrob(plot_model(pm_shim_jt,type="pred",terms = c("sc11KT"),bias_correction=TRUE,col="gray42")+scale_y_continuous(trans='log10')+coord_cartesian(xlim=c(-2,3.5),ylim=c(.9,60),expand=FALSE)+geom_point(data=dftdrop,aes(x=sc11KT,y=Shimmy+1),size=jtsize,col=jtcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Scaled 11KT (pg/g/hr)",y="Number of Shimmy +1",title=""))
+
+p4<-ggplotGrob(plot_model(pm_out_jt,type="pred",terms = c("scE2"),bias_correction=TRUE,col="gray42")+coord_cartesian(xlim=c(-.75,3.25),ylim=c(-.1,1.5),expand=FALSE)+geom_point(data=dftdrop,aes(x=scE2,y=tOut),size=jtsize,col=jtcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Scaled E2 (pg/g/hr)",y="Arcsine (% Time Out of Nest)",title=""))                                                         
+p5<-ggplotGrob(plot_model(pm_app_jt,type="pred",terms = c("scE2"),bias_correction=TRUE,col="gray42")+scale_y_continuous(trans='log10')+coord_cartesian(xlim=c(-.75,3.25),ylim=c(2.5,80),expand=FALSE)+geom_point(data=dftdrop,aes(x=scE2,y=Approach),size=jtsize,col=jtcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Scaled E2 (pg/g/hr)",y="Number of Approaches",title=""))
+
+p6<-ggplotGrob(plot_model(pm_shim_jt,type="pred",terms = c("scE2"),bias_correction=TRUE,col="gray42")+scale_y_continuous(trans='log10')+coord_cartesian(xlim=c(-.75,3.25),ylim=c(.9,60),expand=FALSE)+geom_point(data=dftdrop,aes(x=scE2,y=Shimmy+1),size=jtsize,col=jtcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Scaled E2 (pg/g/hr)",y="Number of Shimmy +1",title=""))
+grid.arrange(p1,p2,p3,p4,p5,p6, nrow=2)
+
+```
+
+```{r}
+dfm$sc11KT<-scale(dfm$X11KT)
+dfm$scE2<-scale(dfm$E2)
+dfm$scT<-scale(dfm$T)
+dfm$scPr<-scale(dfm$Pr)
+jmcol<-c("#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#6672F6","#F7566E","#F7566E","#F7566E","#F7566E","#F7566E","#F7566E","#F7566E","#F7566E","#F7566E","#F7566E")
+jmsize<-c(3,5,5,3,5,3,3,5,3,5,5,3,3,5,5,3,5,3,3,5,3,5,3,5)
+
+pm_app_jm<-glmer(Approach+1~sc11KT+scT+Part_PC+Size+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+pm_shim_jm<-glmer(Shimmy+1~Size+scT+Part_PC+Round+(1|ID),family="poisson",control=glmerControl(optimizer="bobyqa", optCtrl=list(maxfun=2e5)),dfm)
+
+p7<-ggplotGrob(plot_model(pm_app_jm,type="pred",terms = c("scT"),bias_correction=TRUE,col="gray42")+scale_y_continuous(trans='log10')+coord_cartesian(xlim=c(-2.5,2),ylim=c(0.9,50),expand=FALSE)+geom_point(data=dfm,aes(x=scT,y=Approach+1),size=jmsize,col=jmcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Scaled T (pg/g/hr)",y="Number of Approaches +1",title=""))
+
+p8<-ggplotGrob(plot_model(pm_shim_jm,type="pred",terms = c("scT"),bias_correction=TRUE,col="gray42")+scale_y_continuous(trans='log10')+coord_cartesian(xlim=c(-2.5,2),ylim=c(0.9,55),expand=FALSE)+geom_point(data=dfm,aes(x=scT,y=Shimmy+1),size=jmsize,col=jmcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Scaled T (pg/g/hr)",y="Number of Shimmy +1",title=""))
+
+p9<-ggplotGrob(plot_model(pm_app_jm,type="pred",terms = c("Part_PC"),bias_correction=TRUE,col="gray42")+scale_y_continuous(trans='log10')+coord_cartesian(xlim=c(-2,3.3),ylim=c(0.9,50),expand=FALSE)+geom_point(data=dfm,aes(x=Part_PC,y=Approach+1),size=jmsize,col=jmcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Partner Behavior PC1",y="Number of Approaches +1",title=""))
+
+p10<-ggplotGrob(plot_model(pm_shim_jm,type="pred",terms = c("Part_PC"),bias_correction=TRUE,col="gray42")+scale_y_continuous(trans='log10')+coord_cartesian(xlim=c(-2,3.3),ylim=c(0.9,55),expand=FALSE)+geom_point(data=dfm,aes(x=Part_PC,y=Shimmy+1),size=jmsize,col=jmcol)+theme(axis.text=element_text(size=12),axis.title=element_text(size=16,face="bold"),panel.background = element_blank(),axis.line = element_line(colour = "black"),panel.grid.major=element_line(colour="grey90"))+labs(x="Partner Behavior PC1",y="Number of Shimmy +1",title=""))
+grid.arrange(p7,p8,p9,p10,nrow=2)
+```
